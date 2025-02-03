@@ -29,7 +29,7 @@ Rate Limiter is a simple and effective API rate limiting solution built with Go,
 1. **Clone the Repository:**
 
    ```bash
-   git clone https://github.com/your-username/rate-limiter.git
+   git clone https://github.com/AliRizaAynaci/rate-limiter.git
    cd rate-limiter
    ```
 
