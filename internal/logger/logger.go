@@ -1,43 +1,58 @@
 package logger
 
 import (
+	"encoding/json"
 	"log"
-	"os"
-	"path/filepath"
+	"rate-limiter/internal/database"
+	"rate-limiter/internal/models"
+	"time"
 )
 
 const (
+	DEBUG = "DEBUG"
 	INFO  = "INFO"
+	WARN  = "WARN"
 	ERROR = "ERROR"
 )
 
-func LogMessage(level, message string) {
-	logDir := "/logs"
-	if _, err := os.Stat("/logs"); os.IsNotExist(err) {
-		logDir = "logs"
+func LogMessage(level, message, endpoint string) {
+	db := database.GetDb()
+
+	if db == nil {
+		log.Println("Error: Database connection is nil. Skipping log entry.")
+		return
 	}
 
-	err := os.MkdirAll(logDir, 0755)
+	entry := models.LogEntry{
+		Level:     level,
+		Timestamp: time.Now(),
+		Message:   message,
+		Endpoint:  endpoint,
+	}
+
+	logData, err := json.Marshal(entry)
 	if err != nil {
-		log.Fatalf("Log dizini oluşturulamadı: %v", err)
+		log.Fatalf("JSON log oluşturulamadı: %v", err)
 	}
+	log.Println(string(logData))
 
-	logPath := filepath.Join(logDir, "app.log")
-	file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Fatal(err)
+	if err = db.Create(&entry).Error; err != nil {
+		log.Println("Error saving log entry to database:", err)
 	}
-	defer file.Close()
-
-	logger := log.New(file, "", log.LstdFlags)
-	logger.SetPrefix("[" + level + "] ")
-	logger.Println(message)
 }
 
-func Info(message string) {
-	LogMessage(INFO, message)
+func Debug(message, endpoint string) {
+	LogMessage(DEBUG, message, endpoint)
 }
 
-func Error(message string) {
-	LogMessage(ERROR, message)
+func Info(message, endpoint string) {
+	LogMessage(INFO, message, endpoint)
+}
+
+func Warn(message, endpoint string) {
+	LogMessage(WARN, message, endpoint)
+}
+
+func Error(message, endpoint string) {
+	LogMessage(ERROR, message, endpoint)
 }

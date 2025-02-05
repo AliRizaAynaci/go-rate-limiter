@@ -22,7 +22,6 @@ func NewRedisClient(config RedisConfig) *redis.Client {
 		DB:       config.DB,
 	})
 
-	// Bağlantı testi
 	_, err := client.Ping(context.Background()).Result()
 	if err != nil {
 		log.Fatalf("Redis bağlantısı başarısız: %v", err)
