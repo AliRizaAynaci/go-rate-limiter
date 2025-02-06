@@ -7,7 +7,7 @@ RUN apk add --no-cache build-base gcc musl-dev git
 # 3. Çalışma dizinini oluştur
 WORKDIR /app
 
-# 4. Go modüllerini ayrı kopyala (Cache kullanımı için)
+# 4. Bağımlılıkları önceden indirerek cache’i etkinleştir
 COPY go.mod go.sum ./
 RUN go mod tidy
 

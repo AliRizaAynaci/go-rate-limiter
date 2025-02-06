@@ -13,7 +13,8 @@ run:
 	./main.exe
 
 logs:
-	docker-compose logs -f
+	docker-compose logs -fcls
+
 
 clean:
 	rm -rf logs/*.log

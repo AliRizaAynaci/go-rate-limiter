@@ -23,7 +23,7 @@ func ConnectDb() {
 	database.Logger = logger.Default.LogMode(logger.Error)
 
 	log.Println("Running Migrations")
-	err = database.AutoMigrate(&models.LogEntry{})
+	err = database.AutoMigrate(&models.LogEntry{}, &models.APIKey{})
 	if err != nil {
 		log.Fatal("Failed to migrate database! \n", err.Error())
 		os.Exit(2)

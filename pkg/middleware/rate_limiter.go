@@ -8,28 +8,36 @@ import (
 )
 
 func RateLimiter(c *fiber.Ctx) error {
-	ip := c.IP()
-	endpoint := c.Path()
+	identifier := c.Locals("apiKey")
+	if identifier == nil {
+		identifier = c.IP()
+	}
 
-	count, err := redis.IncrementInRedis(ip)
+	count, err := redis.IncrementInRedis(identifier.(string))
 	if err != nil {
-		logger.Error("Redis hata: "+err.Error(), endpoint)
+		logger.Error("Redis hata: "+err.Error(), c.Path())
 		return c.Status(500).SendString("Redis hata!")
 	}
 
+	rateLimit := c.Locals("rateLimit")
+	limit := 5
+	if rateLimit != nil {
+		limit = rateLimit.(int)
+	}
+
 	if count == 1 {
-		err = redis.SetExpire(ip, 1*time.Minute)
+		err = redis.SetExpire(identifier.(string), 1*time.Minute)
 		if err != nil {
-			logger.Error("Redis expire ayarlama hatası: "+err.Error(), endpoint)
+			logger.Error("Redis expire ayarlama hatası: "+err.Error(), c.Path())
 			return c.Status(500).SendString("Redis hata!")
 		}
 	}
 
-	if count > 5 {
-		logger.Warn("Rate limit aşılmaya çalışıldı: "+ip, endpoint)
+	if count > int64(limit) {
+		logger.Warn("Rate limit aşılmaya çalışıldı: "+identifier.(string), c.Path())
 		return c.Status(429).SendString("Çok fazla istek yaptınız!")
 	}
 
-	logger.Info("Rate limit kontrolü başarıyla geçti: "+ip, endpoint)
+	logger.Info("Rate limit kontrolü başarıyla geçti: "+identifier.(string), c.Path())
 	return c.Next()
 }

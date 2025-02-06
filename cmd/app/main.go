@@ -17,9 +17,9 @@ func setupRoutes(app *fiber.App) {
 
 	app.Get("/logs", handlers.GetLogsHandler)
 
-	api := app.Group("/api", middleware.RateLimiter)
+	api := app.Group("/api", middleware.APIKeyMiddleware, middleware.RateLimiter)
 	api.Get("/protected-endpoint", func(c *fiber.Ctx) error {
-		return c.SendString("Bu endpoint rate limiter tarafından korunuyor!")
+		return c.SendString("Bu endpoint API Key ile korunuyor!")
 	})
 }
 
@@ -30,7 +30,6 @@ func main() {
 	redisConfig := redis.RedisConfig{
 		Addr: "redis:6379",
 	}
-
 	redis.NewRedisClient(redisConfig)
 
 	app := fiber.New()
