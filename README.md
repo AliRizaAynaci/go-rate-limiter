@@ -13,9 +13,10 @@ Rate Limiter is a simple and effective API rate limiting solution built with Go,
 ## Project Architecture
 
 - **`cmd/app`**: The entry point of the application where the Fiber web server is initialized and middleware is set up.
-- **`internal/logger`**: Contains custom logger functions.
+- **`internal/logger`**: Contains custom logger functions and related tests.
 - **`internal/redis`**: Manages Redis operations such as incrementing counters and setting expiration times.
 - **`internal/database`**: Handles SQLite database connections for logging API events.
+- **`internal/models`**: Defines database models like `APIKey` and `LogEntry`.
 - **`pkg/middleware`**: Contains rate limiting and API key authentication middleware.
 - **`pkg/handlers`**: Manages API request handlers.
 
@@ -125,23 +126,33 @@ The logger records events in **JSON format**. Example log entry:
 rate-limiter/
 ├── cmd/
 │   └── app/
+│       ├── logs.db           # SQLite database for logs
 │       └── main.go           # Entry point of the application
 ├── internal/
-│   ├── logger/
-│   │   └── logger.go         # Custom logger implementation
-│   ├── redis/
-│   │   └── redis_client.go   # Redis client and related functions
 │   ├── database/
 │   │   └── database.go       # SQLite database connection
+│   ├── logger/
+│   │   ├── logger.go         # Custom logger implementation
+│   │   └── logger_test.go    # Logger unit tests
+│   ├── models/
+│   │   ├── api_key.go        # API key model
+│   │   └── log_entry.go      # Log entry model
+│   ├── redis/
+│   │   ├── redis_client.go   # Redis client and related functions
+│   │   └── redis_test.go     # Redis unit tests
 ├── pkg/
 │   ├── middleware/
-│   │   ├── rate_limiter.go   # Sliding Window Rate Limiting middleware
 │   │   ├── api_key.go        # API Key authentication middleware
+│   │   ├── middleware_test.go# Middleware unit tests
+│   │   └── rate_limiter.go   # Sliding Window Rate Limiting middleware
 │   ├── handlers/
 │   │   └── logs_handler.go   # Handler to retrieve logs
 ├── logs/                     # Directory for log files (mounted via Docker Compose)
 ├── docker-compose.yml        # Docker Compose configuration
+├── Dockerfile                # Docker build file
 ├── Makefile                  # Makefile for running tasks
-├── README.md                 # This file
-└── go.mod                    # Go module definition
+├── go.mod                    # Go module definition
+├── go.sum                    # Go dependencies
+├── main.exe                  # Compiled executable
+└── README.md                 # This file
 ```
