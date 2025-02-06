@@ -4,17 +4,20 @@ Rate Limiter is a simple and effective API rate limiting solution built with Go,
 
 ## Features
 
-- **Rate Limiting:** Applies a request limit for each IP address.
-- **Custom Logger:** Logs rate limiter events to a log file.
-- **Redis Integration:** Uses Redis to manage counters and expiration settings.
+- **Sliding Window Rate Limiting:** Applies a request limit per IP or API key within a defined time window.
+- **Custom Logger:** Logs events in JSON format to both the database and log files.
+- **Redis Integration:** Manages request counters and expiration times using Redis.
 - **Fiber Web Framework:** Built on the high-performance and easy-to-use Fiber framework.
+- **API Key Support:** Implements API key-based authentication to protect endpoints.
 
 ## Project Architecture
 
-- **`cmd/app`**: The entry point of the application. This is where the Fiber web server is initialized and the middleware is set up.
+- **`cmd/app`**: The entry point of the application where the Fiber web server is initialized and middleware is set up.
 - **`internal/logger`**: Contains custom logger functions.
-- **`internal/redis`**: Handles Redis operations such as incrementing counters and setting expiration.
-- **`pkg/middleware`**: Contains the rate limiting middleware.
+- **`internal/redis`**: Manages Redis operations such as incrementing counters and setting expiration times.
+- **`internal/database`**: Handles SQLite database connections for logging API events.
+- **`pkg/middleware`**: Contains rate limiting and API key authentication middleware.
+- **`pkg/handlers`**: Manages API request handlers.
 
 ## Requirements
 
@@ -49,10 +52,11 @@ Rate Limiter is a simple and effective API rate limiting solution built with Go,
    LOG_DIR=logs
    ```
 
-4. **Run the Application:**
+4. **Build and Run the Application:**
 
    ```bash
-   go run cmd/app/main.go
+   make build
+   make run
    ```
    By default, the server will run on port 3000.
 
@@ -71,7 +75,7 @@ The project comes with a `docker-compose.yml` file to run both Redis and the app
 1. **Start the Containers:**
 
    ```bash
-   docker-compose up --build
+   make up
    ```
 
 2. **Access the Application:**
@@ -82,24 +86,38 @@ The project comes with a `docker-compose.yml` file to run both Redis and the app
    http://localhost:3000/
    ```
 
-3. **Logs:**
+3. **View Logs:**
 
-   Application logs will be mapped to the `./logs` directory on your host machine.
+   ```bash
+   make logs
+   ```
 
-## Tests and Coverage
+4. **Stop Containers:**
 
-This project includes unit tests. To run all tests and view the coverage summary, execute:
+   ```bash
+   make down
+   ```
 
-```bash
-go test -cover ./...
+## Logging Format
+
+The logger records events in **JSON format**. Example log entry:
+
+```json
+{
+  "level": "INFO",
+  "timestamp": "2024-02-07T12:34:56Z",
+  "message": "Rate limit check passed: 192.168.1.1",
+  "endpoint": "/api/protected-endpoint"
+}
 ```
 
-For a detailed HTML coverage report, run:
+## API Endpoints
 
-```bash
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out
-```
+| Method | Endpoint | Description |
+|--------|---------|-------------|
+| GET    | `/` | Check if the API is running |
+| GET    | `/logs` | Retrieve log entries in JSON format |
+| GET    | `/api/protected-endpoint` | Access an endpoint protected with an API key |
 
 ## Project Structure
 
@@ -111,14 +129,19 @@ rate-limiter/
 ├── internal/
 │   ├── logger/
 │   │   └── logger.go         # Custom logger implementation
-│   └── redis/
-│       └── redis.go          # Redis client and related functions
+│   ├── redis/
+│   │   └── redis_client.go   # Redis client and related functions
+│   ├── database/
+│   │   └── database.go       # SQLite database connection
 ├── pkg/
-│   └── middleware/
-│       └── rate_limiter.go   # Rate limiting middleware
+│   ├── middleware/
+│   │   ├── rate_limiter.go   # Sliding Window Rate Limiting middleware
+│   │   ├── api_key.go        # API Key authentication middleware
+│   ├── handlers/
+│   │   └── logs_handler.go   # Handler to retrieve logs
 ├── logs/                     # Directory for log files (mounted via Docker Compose)
 ├── docker-compose.yml        # Docker Compose configuration
+├── Makefile                  # Makefile for running tasks
 ├── README.md                 # This file
 └── go.mod                    # Go module definition
 ```
-
