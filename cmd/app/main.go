@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/gofiber/fiber/v2"
 	"log"
 	"rate-limiter/internal/database"
 	"rate-limiter/internal/redis"
 	"rate-limiter/pkg/handlers"
 	"rate-limiter/pkg/middleware"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 func setupRoutes(app *fiber.App) {
@@ -17,7 +18,7 @@ func setupRoutes(app *fiber.App) {
 
 	app.Get("/logs", handlers.GetLogsHandler)
 
-	api := app.Group("/api", middleware.APIKeyMiddleware, middleware.RateLimiter)
+	api := app.Group("/api", middleware.APIKeyMiddleware, middleware.SlidingWindowRateLimiter)
 	api.Get("/protected-endpoint", func(c *fiber.Ctx) error {
 		return c.SendString("Bu endpoint API Key ile korunuyor!")
 	})

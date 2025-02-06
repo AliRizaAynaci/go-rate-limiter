@@ -2,9 +2,11 @@ package redis
 
 import (
 	"context"
-	"github.com/redis/go-redis/v9"
 	"log"
+	"strconv"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 var client *redis.Client
@@ -29,18 +31,21 @@ func NewRedisClient(config RedisConfig) *redis.Client {
 	return client
 }
 
-func IncrementInRedis(key string) (int64, error) {
-	val, err := client.Incr(context.Background(), key).Result()
-	if err != nil {
-		return 0, err
-	}
-	return val, nil
+func RemoveOldRequests(key string, minTimestamp int64) error {
+	return client.ZRemRangeByScore(context.Background(), key, "0", strconv.FormatInt(minTimestamp, 10)).Err()
 }
 
-func SetExpire(key string, expiration time.Duration) error {
-	err := client.Expire(context.Background(), key, expiration).Err()
+func AddRequest(key string, timestamp int64) error {
+	err := client.ZAdd(context.Background(), key, redis.Z{
+		Score:  float64(timestamp),
+		Member: timestamp,
+	}).Err()
 	if err != nil {
 		return err
 	}
-	return nil
+	return client.Expire(context.Background(), key, 60*time.Second).Err()
+}
+
+func GetRequestsCount(key string) (int64, error) {
+	return client.ZCount(context.Background(), key, "-inf", "+inf").Result()
 }

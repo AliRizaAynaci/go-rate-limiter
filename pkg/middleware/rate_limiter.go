@@ -1,43 +1,53 @@
 package middleware
 
 import (
-	"github.com/gofiber/fiber/v2"
 	"rate-limiter/internal/logger"
 	"rate-limiter/internal/redis"
 	"time"
+
+	"github.com/gofiber/fiber/v2"
 )
 
-func RateLimiter(c *fiber.Ctx) error {
+const (
+	windowSize  = 60 * time.Second
+	maxRequests = 5
+)
+
+func SlidingWindowRateLimiter(c *fiber.Ctx) error {
 	identifier := c.Locals("apiKey")
 	if identifier == nil {
 		identifier = c.IP()
 	}
 
-	count, err := redis.IncrementInRedis(identifier.(string))
+	key := "rate_limit" + identifier.(string)
+	now := time.Now().Unix()
+
+	// Clean the old requests from the redis
+	err := redis.RemoveOldRequests(key, now-int64(windowSize.Seconds()))
 	if err != nil {
-		logger.Error("Redis hata: "+err.Error(), c.Path())
-		return c.Status(500).SendString("Redis hata!")
+		logger.Error("Redis eski istekleri temizleme hatası: "+err.Error(), c.Path())
+		return c.Status(500).SendString("Redis hatası!")
 	}
 
-	rateLimit := c.Locals("rateLimit")
-	limit := 5
-	if rateLimit != nil {
-		limit = rateLimit.(int)
+	// Get the new requests count
+	count, err := redis.GetRequestsCount(key)
+	if err != nil {
+		logger.Error("Redis istek sayısı alma hatası: "+err.Error(), c.Path())
+		return c.Status(500).SendString("Redis hatası!")
 	}
 
-	if count == 1 {
-		err = redis.SetExpire(identifier.(string), 1*time.Minute)
-		if err != nil {
-			logger.Error("Redis expire ayarlama hatası: "+err.Error(), c.Path())
-			return c.Status(500).SendString("Redis hata!")
-		}
-	}
-
-	if count > int64(limit) {
-		logger.Warn("Rate limit aşılmaya çalışıldı: "+identifier.(string), c.Path())
+	if count >= maxRequests {
+		logger.Warn("Rate limit aşıldı: "+identifier.(string), c.Path())
 		return c.Status(429).SendString("Çok fazla istek yaptınız!")
 	}
 
-	logger.Info("Rate limit kontrolü başarıyla geçti: "+identifier.(string), c.Path())
+	// Add new request into the window
+	err = redis.AddRequest(key, now)
+	if err != nil {
+		logger.Error("Redis yeni istek ekleme hatası: "+err.Error(), c.Path())
+		return c.Status(500).SendString("Redis hatası!")
+	}
+
+	logger.Info("Rate limit başarılı: "+identifier.(string), c.Path())
 	return c.Next()
 }

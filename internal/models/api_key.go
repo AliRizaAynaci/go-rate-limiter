@@ -9,7 +9,7 @@ import (
 type APIKey struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
 	Key       string    `json:"key" gorm:"uniqueIndex"`
-	RateLimit int       `json:"rate_limit"`
+	Limit     int       `json:"limit"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

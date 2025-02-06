@@ -1,9 +1,10 @@
 package middleware
 
 import (
-	"github.com/gofiber/fiber/v2"
 	"rate-limiter/internal/database"
 	"rate-limiter/internal/models"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 func APIKeyMiddleware(c *fiber.Ctx) error {
