@@ -49,3 +49,10 @@ func AddRequest(key string, timestamp int64) error {
 func GetRequestsCount(key string) (int64, error) {
 	return client.ZCount(context.Background(), key, "-inf", "+inf").Result()
 }
+
+func GetClient() *redis.Client {
+	if client == nil {
+		log.Fatal("Redis client is not initialized!")
+	}
+	return client
+}
