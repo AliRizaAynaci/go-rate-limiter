@@ -1,49 +1,33 @@
-// internal/redis/redis_test.go
 package redis_test
 
 import (
 	"context"
+	"rate-limiter/internal/redis"
 	"testing"
 	"time"
-
-	"rate-limiter/internal/redis"
 )
 
-func TestIncrementInRedis(t *testing.T) {
+func TestRedisOperations(t *testing.T) {
 	config := redis.RedisConfig{
 		Addr: "localhost:6379",
-		DB:   1,
+		DB:   2,
 	}
 	client := redis.NewRedisClient(config)
 	client.FlushDB(context.Background())
 
-	key := "test-counter"
-	val, err := redis.IncrementInRedis(key)
-	if err != nil {
-		t.Fatalf("IncrementInRedis hatası: %v", err)
-	}
-	if val != 1 {
-		t.Fatalf("Beklenen değer 1, ancak %d geldi", val)
-	}
-}
+	key := "test-request"
+	timestamp := time.Now().Unix()
 
-func TestSetExpire(t *testing.T) {
-	config := redis.RedisConfig{
-		Addr: "localhost:6379",
-		DB:   1,
+	if err := redis.AddRequest(key, timestamp); err != nil {
+		t.Fatalf("AddRequest başarısız: %v", err)
 	}
-	client := redis.NewRedisClient(config)
-	client.FlushDB(context.Background())
 
-	key := "test-expire"
-	client.Set(context.Background(), key, "deger", 0)
-	err := redis.SetExpire(key, 1*time.Second)
-	if err != nil {
-		t.Fatalf("SetExpire hatası: %v", err)
+	count, err := redis.GetRequestsCount(key)
+	if err != nil || count != 1 {
+		t.Fatalf("Beklenen 1 request, ancak %d bulundu, hata: %v", count, err)
 	}
-	time.Sleep(2 * time.Second)
-	_, err = client.Get(context.Background(), key).Result()
-	if err == nil {
-		t.Fatalf("Anahtarın süresi dolmasına rağmen değer mevcut")
+
+	if err := redis.RemoveOldRequests(key, timestamp-10); err != nil {
+		t.Fatalf("RemoveOldRequests başarısız: %v", err)
 	}
 }

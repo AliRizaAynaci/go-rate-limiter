@@ -37,3 +37,7 @@ func GetDb() *gorm.DB {
 	}
 	return database
 }
+
+func SetDb(db *gorm.DB) {
+	database = db
+}

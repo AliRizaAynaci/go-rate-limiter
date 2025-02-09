@@ -1,9 +1,7 @@
 package middleware
 
 import (
-	"context"
 	"fmt"
-	"rate-limiter/internal/logger"
 	"rate-limiter/internal/redis"
 	"time"
 
@@ -21,38 +19,44 @@ func SlidingWindowRateLimiter(c *fiber.Ctx) error {
 		identifier = c.IP()
 	}
 
+	fmt.Printf("🟡 Gelen IP: %s\n", c.IP()) // Debug için ekleyelim
+
+	if identifier == "0.0.0.0" {
+		fmt.Println("⚠️  IP 0.0.0.0 olarak algılandı, düzeltme yapılıyor...")
+		identifier = "127.0.0.1" // Test sırasında düzgün çalışması için
+	}
+
 	key := "rate_limit:" + identifier.(string)
 	now := time.Now().Unix()
 
+	fmt.Printf("🟡 Rate limiter çalışıyor. Key: %s\n", key)
+
 	err := redis.RemoveOldRequests(key, now-int64(windowSize.Seconds()))
 	if err != nil {
-		logger.Error("Redis eski istekleri temizleme hatası: "+err.Error(), c.Path())
+		fmt.Println("❌ Redis eski istekleri temizleyemedi!")
 		return c.Status(500).SendString("Redis hatası!")
 	}
 
 	count, err := redis.GetRequestsCount(key)
 	if err != nil {
-		logger.Error("Redis istek sayısı alma hatası: "+err.Error(), c.Path())
+		fmt.Println("❌ Redis'ten istek sayısı alınamadı!")
 		return c.Status(500).SendString("Redis hatası!")
 	}
 
+	fmt.Printf("🟢 Redis'teki mevcut istek sayısı: %d\n", count)
+
 	if count >= maxRequests {
-		logger.Warn("Rate limit aşıldı: "+identifier.(string), c.Path())
-
-		redis.GetClient().Incr(context.Background(), fmt.Sprintf("rate_limit_violations:%s", identifier.(string)))
-
+		fmt.Println("🚫 Rate limit aşıldı, 429 dönülüyor!")
 		return c.Status(429).SendString("Çok fazla istek yaptınız!")
 	}
 
 	err = redis.AddRequest(key, now)
 	if err != nil {
-		logger.Error("Redis yeni istek ekleme hatası: "+err.Error(), c.Path())
+		fmt.Println("❌ Redis'e yeni istek eklenemedi!")
 		return c.Status(500).SendString("Redis hatası!")
 	}
 
-	redis.GetClient().Incr(context.Background(), "total_requests")
-	redis.GetClient().Incr(context.Background(), fmt.Sprintf("requests_per_endpoint:%s", c.Path()))
+	fmt.Println("✅ Redis'e yeni istek başarıyla eklendi!")
 
-	logger.Info("Rate limit başarılı: "+identifier.(string), c.Path())
 	return c.Next()
 }
