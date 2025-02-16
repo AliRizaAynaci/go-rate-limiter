@@ -1,13 +1,18 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"rate-limiter/internal/database"
 	"rate-limiter/internal/prometheus"
 	"rate-limiter/internal/redis"
 	"rate-limiter/pkg/handlers"
 	"rate-limiter/pkg/middleware"
+	"syscall"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/adaptor"
@@ -15,10 +20,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// prometheusHandler returns a Fiber handler that serves Prometheus metrics
 func prometheusHandler() fiber.Handler {
 	return adaptor.HTTPHandler(promhttp.Handler())
 }
 
+// setupRoutes configures all the routes for the Fiber application
 func setupRoutes(app *fiber.App) {
 	app.Get("/", func(c *fiber.Ctx) error {
 		prometheus.RecordRedisRequest("/")
@@ -44,6 +51,38 @@ func setupRoutes(app *fiber.App) {
 	})
 }
 
+// gracefulShutdown handles the graceful shutdown process of the application
+// It closes Redis and Database connections, and shuts down the server properly
+func gracefulShutdown(app *fiber.App) {
+	shutdownChan := make(chan os.Signal, 1)
+	signal.Notify(shutdownChan, os.Interrupt, syscall.SIGTERM)
+
+	<-shutdownChan
+	fmt.Println("\nGraceful shutdown başlatılıyor...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := redis.GetClient().Close(); err != nil {
+		log.Printf("Redis bağlantısı kapatılırken hata: %v", err)
+	}
+
+	sqlDB, err := database.GetDb().DB()
+	if err != nil {
+		log.Printf("Database SQL bağlantısı alınırken hata: %v", err)
+	} else {
+		if err := sqlDB.Close(); err != nil {
+			log.Printf("Database bağlantısı kapatılırken hata: %v", err)
+		}
+	}
+
+	if err := app.ShutdownWithContext(ctx); err != nil {
+		log.Printf("Server kapatılırken hata: %v", err)
+	}
+
+	fmt.Println("Server güvenli bir şekilde kapatıldı")
+}
+
 func main() {
 	database.ConnectDb()
 
@@ -57,6 +96,12 @@ func main() {
 	app := fiber.New()
 	setupRoutes(app)
 
-	fmt.Println("Server çalışıyor: http://localhost:3000")
-	log.Fatal(app.Listen(":3000"))
+	go func() {
+		fmt.Println("Server çalışıyor: http://localhost:3000")
+		if err := app.Listen(":3000"); err != nil {
+			log.Printf("Server hatası: %v", err)
+		}
+	}()
+
+	gracefulShutdown(app)
 }

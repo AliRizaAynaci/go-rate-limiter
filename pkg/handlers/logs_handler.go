@@ -7,13 +7,15 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// GetLogsHandler handles requests to retrieve log entries with optional filtering
+// Supports filtering by level, endpoint, and message content
+// Returns the last 100 log entries ordered by timestamp descending
 func GetLogsHandler(c *fiber.Ctx) error {
 	db := database.GetDb()
 	var logs []models.LogEntry
 
 	query := db
 
-	// Filtreleme seçenekleri
 	if level := c.Query("level"); level != "" {
 		query = query.Where("level = ?", level)
 	}
@@ -24,7 +26,6 @@ func GetLogsHandler(c *fiber.Ctx) error {
 		query = query.Where("message LIKE ?", "%"+search+"%")
 	}
 
-	// Son 100 log kaydını getir
 	query.Order("timestamp desc").Limit(100).Find(&logs)
 
 	return c.JSON(logs)

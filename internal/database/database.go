@@ -12,9 +12,11 @@ import (
 
 var database *gorm.DB
 
+// ConnectDb establishes a connection to the SQLite database
+// It handles database initialization, migrations, and creates a default API key if none exists
 func ConnectDb() {
 	var err error
-	dbPath := "/data/logs.db" // Container içinde sabit bir yol
+	dbPath := "/data/logs.db"
 	if os.Getenv("DB_PATH") != "" {
 		dbPath = os.Getenv("DB_PATH")
 	}
@@ -34,7 +36,6 @@ func ConnectDb() {
 		os.Exit(2)
 	}
 
-	// Default API Key oluştur
 	var count int64
 	database.Model(&models.APIKey{}).Count(&count)
 	if count == 0 {
@@ -50,6 +51,8 @@ func ConnectDb() {
 	}
 }
 
+// GetDb returns the global database instance
+// Panics if the database connection is nil
 func GetDb() *gorm.DB {
 	if database == nil {
 		log.Fatal("Database connection is nil! Application is exiting.")
@@ -58,6 +61,8 @@ func GetDb() *gorm.DB {
 	return database
 }
 
+// SetDb sets the global database instance
+// Used primarily for testing purposes
 func SetDb(db *gorm.DB) {
 	database = db
 }
