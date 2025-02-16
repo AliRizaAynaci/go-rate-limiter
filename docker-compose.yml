@@ -47,7 +47,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - REDIS_ADDR=redis:6379  # Redis'in adresi
+      - REDIS_ADDR=redis:6379
+      - DB_PATH=/data/logs.db
+    volumes:
+      - db-data:/data  # Veritabanı için kalıcı volume
     depends_on:
       - redis
     networks:
@@ -57,3 +60,6 @@ services:
 networks:
   app_network:
     driver: bridge
+
+volumes:
+  db-data:  # Veritabanı için kalıcı volume tanımı

@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"fmt"
+	"rate-limiter/internal/database"
+	"rate-limiter/internal/models"
 	"rate-limiter/internal/redis"
 	"time"
 
@@ -47,7 +49,39 @@ func SlidingWindowRateLimiter(c *fiber.Ctx) error {
 
 	if count >= maxRequests {
 		fmt.Println("🚫 Rate limit aşıldı, 429 dönülüyor!")
-		return c.Status(429).SendString("Çok fazla istek yaptınız!")
+		// Rate limit aşıldığında log kaydı oluştur
+		logEntry := models.LogEntry{
+			Level:     "WARNING",
+			Timestamp: time.Now(),
+			Message:   fmt.Sprintf("Rate limit exceeded for API key: %s", identifier.(string)),
+			Endpoint:  c.Path(),
+		}
+
+		db := database.GetDb()
+		if err := db.Create(&logEntry).Error; err != nil {
+			// Log hatası olsa bile kullanıcıya rate limit hatası gösterilmeli
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"error": "Rate limit exceeded",
+			})
+		}
+
+		return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+			"error": "Rate limit exceeded",
+		})
+	}
+
+	// Başarılı istekleri de loglayalım
+	logEntry := models.LogEntry{
+		Level:     "INFO",
+		Timestamp: time.Now(),
+		Message:   fmt.Sprintf("Request processed for API key: %s (Count: %d/%d)", identifier.(string), count, maxRequests),
+		Endpoint:  c.Path(),
+	}
+
+	db := database.GetDb()
+	if err := db.Create(&logEntry).Error; err != nil {
+		// Log hatası olsa bile isteği işlemeye devam et
+		fmt.Printf("Log kaydı oluşturulurken hata: %v\n", err)
 	}
 
 	err = redis.AddRequest(key, now)

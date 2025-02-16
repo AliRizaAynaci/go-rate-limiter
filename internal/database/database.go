@@ -14,7 +14,12 @@ var database *gorm.DB
 
 func ConnectDb() {
 	var err error
-	database, err = gorm.Open(sqlite.Open("logs.db"), &gorm.Config{})
+	dbPath := "/data/logs.db" // Container içinde sabit bir yol
+	if os.Getenv("DB_PATH") != "" {
+		dbPath = os.Getenv("DB_PATH")
+	}
+
+	database, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Failed to connect to database! \n", err.Error())
 		os.Exit(2)
@@ -27,6 +32,21 @@ func ConnectDb() {
 	if err != nil {
 		log.Fatal("Failed to migrate database! \n", err.Error())
 		os.Exit(2)
+	}
+
+	// Default API Key oluştur
+	var count int64
+	database.Model(&models.APIKey{}).Count(&count)
+	if count == 0 {
+		defaultKey := models.APIKey{
+			Key:   "test-api-key-123",
+			Limit: 100,
+		}
+		if err := database.Create(&defaultKey).Error; err != nil {
+			log.Printf("Default API Key oluşturulamadı: %v\n", err)
+		} else {
+			log.Printf("Default API Key oluşturuldu: %s\n", defaultKey.Key)
+		}
 	}
 }
 

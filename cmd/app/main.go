@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"log"
 	"rate-limiter/internal/database"
 	"rate-limiter/internal/prometheus"
 	"rate-limiter/internal/redis"
 	"rate-limiter/pkg/handlers"
 	"rate-limiter/pkg/middleware"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/adaptor"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
