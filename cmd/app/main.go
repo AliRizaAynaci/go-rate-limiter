@@ -17,6 +17,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/adaptor"
 
+	_ "rate-limiter/docs" // This will import the docs
+
+	"github.com/gofiber/swagger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -27,6 +30,12 @@ func prometheusHandler() fiber.Handler {
 
 // setupRoutes configures all the routes for the Fiber application
 func setupRoutes(app *fiber.App) {
+	// @Summary Health check endpoint
+	// @Description Returns a simple message indicating the API is running
+	// @Tags root
+	// @Produce plain
+	// @Success 200 {string} string "API Rate Limiter Çalışıyor!"
+	// @Router / [get]
 	app.Get("/", func(c *fiber.Ctx) error {
 		prometheus.RecordRedisRequest("/")
 		return c.SendString("API Rate Limiter Çalışıyor!")
@@ -49,6 +58,9 @@ func setupRoutes(app *fiber.App) {
 		}
 		return c.Next()
 	})
+
+	// Add Swagger route
+	app.Get("/swagger/*", swagger.HandlerDefault)
 }
 
 // gracefulShutdown handles the graceful shutdown process of the application
@@ -83,6 +95,11 @@ func gracefulShutdown(app *fiber.App) {
 	fmt.Println("Server güvenli bir şekilde kapatıldı")
 }
 
+// @title Rate Limiter API
+// @version 1.0
+// @description A REST API for rate limiting with Redis and SQLite
+// @host localhost:3000
+// @BasePath /
 func main() {
 	database.ConnectDb()
 

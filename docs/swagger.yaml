@@ -1,0 +1,58 @@
+basePath: /
+definitions:
+  models.LogEntry:
+    properties:
+      endpoint:
+        example: /api/protected-endpoint
+        type: string
+      id:
+        example: 1
+        type: integer
+      level:
+        example: INFO
+        type: string
+      message:
+        example: Request processed successfully
+        type: string
+      timestamp:
+        example: "2024-03-20T15:04:05Z"
+        type: string
+    type: object
+host: localhost:3000
+info:
+  contact: {}
+  description: A REST API for rate limiting with Redis and SQLite
+  title: Rate Limiter API
+  version: "1.0"
+paths:
+  /logs:
+    get:
+      consumes:
+      - application/json
+      description: Get the last 100 log entries with optional filtering
+      parameters:
+      - description: Filter by log level (DEBUG, INFO, WARN, ERROR)
+        in: query
+        name: level
+        type: string
+      - description: Filter by endpoint
+        in: query
+        name: endpoint
+        type: string
+      - description: Search in message content
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.LogEntry'
+            type: array
+      summary: Get logs
+      tags:
+      - logs
+swagger: "2.0"
